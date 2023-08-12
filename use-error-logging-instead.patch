@@ -1,0 +1,35 @@
+diff --git a/web/src/Log.php b/web/src/Log.php
+index f9f6627e..ced9183d 100644
+--- a/web/src/Log.php
++++ b/web/src/Log.php
+@@ -2,7 +2,7 @@
+ namespace AgenDAV;
+ 
+ use Monolog\Logger;
+-use Monolog\Handler\StreamHandler;
++use Monolog\Handler\ErrorLogHandler;
+ use Monolog\Processor\IntrospectionProcessor;
+ use Monolog\Processor\WebProcessor;
+ use Monolog\Formatter\LineFormatter;
+@@ -42,8 +42,8 @@ class Log
+     public static function generateHttpLogger($log_path)
+     {
+         $logger = new \Monolog\Logger('http');
+-        $handler = new \Monolog\Handler\StreamHandler(
+-            $log_path . 'http-'. date('Y-m-d') .'.log',
++        $handler = new \Monolog\Handler\ErrorLogHandler(
++            \Monolog\Handler\ErrorLogHandler::OPERATING_SYSTEM,
+             \Monolog\Logger::DEBUG
+         );
+         $formatter = new \Monolog\Formatter\LineFormatter(
+--- a/web/vendor/silex/silex/src/Silex/Provider/MonologServiceProvider.php
++++ a/web/vendor/silex/silex/src/Silex/Provider/MonologServiceProvider.php
+@@ -81,7 +81,7 @@
+         $app['monolog.handler'] = $defaultHandler = function () use ($app) {
+             $level = MonologServiceProvider::translateLevel($app['monolog.level']);
+ 
+-            $handler = new Handler\StreamHandler($app['monolog.logfile'], $level, $app['monolog.bubble'], $app['monolog.permission']);
++            $handler = new Handler\ErrorLogHandler(Handler\ErrorLogHandler::OPERATING_SYSTEM, $level, $app['monolog.bubble']);
+             $handler->setFormatter($app['monolog.formatter']);
+ 
+             return $handler;

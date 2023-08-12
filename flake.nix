@@ -15,7 +15,7 @@
           agendav = pkgs.callPackage ./agendav.nix {};
         in
         {
-          packages.default = agendav.all;
+          packages.default = agendav.agendav;
         };
     };
 }

@@ -1,13 +1,14 @@
 {
   fetchurl,
   lib,
+  nginx,
   php,
+  runCommand,
   stdenv,
   symlinkJoin,
+  writers,
   writeShellApplication,
   writeText,
-  nginx,
-  runCommand,
 }:
 
 let
@@ -109,11 +110,30 @@ let
     }
   '';
 
+  # Note: I can't use node's concurrently, because the subprocesses fail to
+  # open /dev/stdout. This SO [0] talks about the issue, but doesn't seem to
+  # have a good answer about what exactly is going on. There's a lot of talk
+  # about posix compliance and shell behavior. Urg.
+  # [0]: https://stackoverflow.com/questions/40301841/cannot-create-dev-stdout-no-such-device-or-address
+  # TODO: figure out what's going on with node, or have some fun with this and port it to rust?
+  concurrently = writers.writePython3 "concurrently-py" { } (builtins.readFile ./concurrently.py);
 in
 
 rec {
-  php = writeShellApplication {
+  agendav-php = writeShellApplication {
     name = "agendav-php";
+    text = ''
+      exec ${myPhp}/bin/php-fpm -y ${fpmCfgFile}
+    '';
+  };
+  agendav-nginx = writeShellApplication {
+    name = "agendav-nginx";
+    text = ''
+      exec ${nginx}/bin/nginx -e /dev/stderr -c ${nginxConf}
+    '';
+  };
+  agendav = writeShellApplication {
+    name = "agendav";
     text = ''
       rm -r ${runtimeDir}
       mkdir -p ${runtimeDir}
@@ -124,19 +144,7 @@ rec {
         ${myPhp}/bin/php agendavcli migrations:migrate -q
       )
 
-      exec ${myPhp}/bin/php-fpm -y ${fpmCfgFile}
+      ${concurrently} ${agendav-php}/bin/agendav-php ${agendav-nginx}/bin/agendav-nginx
     '';
   };
-  nginx = writeShellApplication {
-    name = "agendav-nginx";
-    text = ''
-      exec ${nginx}/bin/nginx -e /dev/stderr -c ${nginxConf}
-    '';
-  };
-  all = writeShellApplication {
-    name = "agendav";
-    text = ''
-      ${concurrently} ${php} ${nginx}
-    '';
-  };
-};
+}
